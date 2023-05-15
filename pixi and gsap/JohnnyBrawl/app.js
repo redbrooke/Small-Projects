@@ -10,6 +10,7 @@ const johnnyTexture = PIXI.Texture.from('./images/johnny.jpg');
 const muscleTexture = PIXI.Texture.from('./images/muscle.jpg');
 
 let hitCount = 0;
+let allowHit = true;
 const score = new PIXI.Text('baddies smashed: ' + hitCount);
 score.x = app.screen.width / 16;
 score.y = app.screen.height / 16 ;
@@ -25,6 +26,7 @@ johnny.y = app.screen.height / 2;
 
 const fan = new PIXI.Sprite(fansTexture);
 fan.scale.set(0.2);
+fan.y = app.screen.height / 2;
 
 /**
  * Enabling interactive mode allows you to click and move objects
@@ -49,7 +51,8 @@ johnny.on('pointerdown', (test) => {
     app.stage.addChild(muscle);
     muscle.x = johnny.x;
     muscle.y = johnny.y;
-    gsap.to(muscle, {x:(johnny.x - 200), duraton:2, y:(johnny.y - 200)});
+    allowHit = true;
+    gsap.to(muscle, {x:(johnny.x - 600), duraton:4, y:(johnny.y)});
 });
 
 app.stage.addEventListener('pointermove', (e) => {
@@ -71,13 +74,20 @@ function collideCheck(object1, object2){
         && bounds1.y + bounds1.height > bounds2.y;
 };
 
+function fanReset(){
+
+    
+}
+
 app.ticker.add (() => {
-    if(collideCheck(muscle, fan)){
-        console.log("hit");
+
+    if(collideCheck(muscle, fan) && allowHit){
+        allowHit = false;
         muscle.x = johnny.x;
         muscle.y = johnny.y;
         app.stage.removeChild(muscle);
         hitCount++
     }
+
     score.text = ('baddies smashed: ' + hitCount);
 });
