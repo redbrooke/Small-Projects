@@ -4,10 +4,11 @@ const app = new PIXI.Application({background: '#ffffff'});
 document.body.appendChild(app.view);
 
 const adoringFanTexture = PIXI.Texture.from('./images/adoringFan.jpeg');
-const fansTexture = PIXI.Texture.from('./images/adoringFan.jpeg');
+const fansTexture = PIXI.Texture.from('./images/fans.jpeg');
 const paparazziTexture = PIXI.Texture.from('./images/paparazzi.jpg');
 const johnnyTexture = PIXI.Texture.from('./images/johnny.jpg');
 const muscleTexture = PIXI.Texture.from('./images/muscle.jpg');
+const possibleFans = [fansTexture, paparazziTexture, adoringFanTexture];
 
 let hitCount = 0;
 let allowHit = true;
@@ -46,6 +47,7 @@ app.stage.addChild(johnny);
 app.stage.addChild(score);
 app.stage.addChild(muscle);
 app.stage.addChild(fan);
+gsap.to(fan, { x: app.screen.width / 2});
 
 johnny.on('pointerdown', (test) => {
     app.stage.addChild(muscle);
@@ -75,8 +77,11 @@ function collideCheck(object1, object2){
 };
 
 function fanReset(){
-
-    
+    var nextFan = Math.floor(Math.random() * 3);
+    fan.texture = possibleFans[nextFan];
+    fan.x = app.screen.width / 16;
+    fan.y = app.screen.height / (1.5 + Math.floor(Math.random() * 3));
+ 
 }
 
 app.ticker.add (() => {
@@ -86,6 +91,7 @@ app.ticker.add (() => {
         muscle.x = johnny.x;
         muscle.y = johnny.y;
         app.stage.removeChild(muscle);
+        fanReset();
         hitCount++
     }
 
