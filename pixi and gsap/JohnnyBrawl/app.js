@@ -40,6 +40,7 @@ johnny.cursor = 'pointer';
 johnny.anchor.set(0.5);
 muscle.anchor.set(0.5);
 
+// needed to make the stage aware
 app.stage.interactive = true;
 app.stage.hitArea = app.screen;
 
@@ -49,6 +50,10 @@ app.stage.addChild(muscle);
 app.stage.addChild(fan);
 gsap.to(fan, { x: app.screen.width / 2});
 
+
+/**
+ * When Johnny is click a muscle shoots out.
+ */
 johnny.on('pointerdown', (test) => {
     app.stage.addChild(muscle);
     muscle.x = johnny.x;
@@ -57,13 +62,17 @@ johnny.on('pointerdown', (test) => {
     gsap.to(muscle, {x:(johnny.x - 600), duraton:4, y:(johnny.y)});
 });
 
+
+/**
+ * Creates a listener that makes Johnny move whenever the mouse is moved.
+ */
 app.stage.addEventListener('pointermove', (e) => {
     johnny.position.copyFrom(e.global);
 });
 
 /**
  * Stolen directly from the docs.
- * 
+ * Checks if the bounds of two rectangles are touching.
  * 
  */
 function collideCheck(object1, object2){
@@ -76,6 +85,9 @@ function collideCheck(object1, object2){
         && bounds1.y + bounds1.height > bounds2.y;
 };
 
+/**
+ * Resets the fan and gives them a random texture.
+ */
 function fanReset(){
     var nextFan = Math.floor(Math.random() * 3);
     fan.texture = possibleFans[nextFan];
@@ -84,6 +96,10 @@ function fanReset(){
  
 }
 
+/**
+ * Ticker allows for stuff to be run every time thre is a frame update. This is risky.
+ * 
+ */
 app.ticker.add (() => {
 
     if(collideCheck(muscle, fan) && allowHit){
