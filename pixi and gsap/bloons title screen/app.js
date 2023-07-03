@@ -98,8 +98,8 @@ app.stage.addChild(wizard);
 
 // Layers
 
-const userInterface = new PIXI.layers.Layer();
-logo.parentLayer = userInterface;
+const userInterface     = new PIXI.layers.Layer();
+logo.parentLayer        = userInterface;
 startButton.parentLayer = userInterface;
 app.stage.addChild(userInterface);
 
@@ -108,7 +108,7 @@ app.stage.addChild(userInterface);
 var timeline = gsap.timeline();
 
 // Logo
-timeline.fromTo(logo, {opacity: 0} , {opacity: 1, duration: 2});
+timeline.fromTo(logo, {opacity: 0} , {opacity: 1, duration: 2}, 1);
 
 // Monkeys loaded
 
@@ -130,7 +130,7 @@ timeline.fromTo(wizard, {opacity: 0} , {opacity: 1, duration: 2});
 
 //timeline.fromTo(startButton, {opacity: 0} , {opacity: 1, duration: 2});
 
-timeline.to(startButton, {rotation: 60 * Math.PI / 180, duration: 1});
+timeline.to(startButton, {rotation: 60 * Math.PI / 180, duration: 1}, 1);
 
 //timeline.play();
 timeline.resume();
