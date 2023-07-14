@@ -2,12 +2,14 @@
 <b>Enumeration checklist</b>
 <hr>
 <ul>
-<li>Password Policy readable           []</li>
-<li>Kebrute-able                       []</li>
+<li>Password Policy readable</li>
+<li>Kebrute-able</li>
+</ul>
 
 Account Takeover Checklist
 
-<li>Vulnerable to ASREP-Roasting       []</li>
+<ul>
+<li>Vulnerable to ASREP-Roasting</li>
 </ul>
 
 <hr>
