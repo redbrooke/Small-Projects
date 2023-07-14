@@ -1,9 +1,9 @@
 <b>Checklist</b>
 
-<ul>
+<ol>
   <li>Attempt NULL authentication</li>
   <li>Password bruteforce</li>
-</ul>
+</ol>
 
 <b>Cheatsheet</b>
 
