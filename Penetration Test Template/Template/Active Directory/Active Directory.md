@@ -9,6 +9,7 @@
 Account Takeover Checklist
 
 <ul>
+<li>LLMNR/NTB-NS Poisionable</li>
 <li>Vulnerable to ASREP-Roasting</li>
 </ul>
 
@@ -29,6 +30,11 @@ Kerbrute uses pre-authentication to check if a given list of users is valid on t
   
 Account takeover techniques
 
+<b>LLMNR/NTB-NS Poisioning</b>
+
+<ol>
+  <li>responder -h</li>
+</ol>
 
 <b>ASREP-Roasting:</b>
 
