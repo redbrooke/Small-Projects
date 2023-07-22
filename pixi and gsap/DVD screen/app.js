@@ -28,6 +28,9 @@ while (true){
     adjustTragectory();
 }
 
+// Equation to make the DVD logo bounce. 
+// d = LCM(hs – hl, ws – wl)
+
 function adjustTragectory(){
 
     originX = targetX;
