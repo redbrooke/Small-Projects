@@ -1,3 +1,5 @@
+// This is horrible for memory usage. FIX PLS
+
 func isPalindrome(x int) bool {
     number := strconv.Itoa(x);
     startPointer := 0;
