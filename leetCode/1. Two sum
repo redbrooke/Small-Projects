@@ -1,0 +1,13 @@
+func twoSum(nums []int, target int) []int {
+    for inx := 0; inx < len(nums); inx++{
+        for inx2 := inx + 1; inx2 < len(nums); inx2++ {
+            if(nums[inx] + nums[inx2] == target){
+                fmt.Println(nums[inx] + nums[inx2]);
+                a := []int{inx,inx2};
+                return a;
+            }
+        }
+    }
+    fmt.Println("nothing");
+    return []int{0,0};
+}
