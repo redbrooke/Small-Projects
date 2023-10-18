@@ -5,6 +5,6 @@ import {
 }
 
 func main() {
-  fmt.Println("Hello World")
-  connector.EXAMPLE()
+  string exampleCommand = "whoami";
+  instruction.setCommand(exampleCommand);
 }
