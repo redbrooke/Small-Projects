@@ -1,7 +1,7 @@
 package main
 
 import {
-  connector "SystemGetters"
+  instruction "returnedInstruction"
 }
 
 func main() {
