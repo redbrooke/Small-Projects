@@ -27,3 +27,7 @@ func (command returnedInstruction) execute() string,int {
   fmt.Printf("%s\n", out)
   return out, err
 }
+
+func(command returnedInstruction) setCommand(nextInstruction) {
+	command.command = nextInstruction;
+}
