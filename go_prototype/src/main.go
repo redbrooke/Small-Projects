@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"log"
 	"os/exec"
@@ -38,7 +39,13 @@ func (command *returnedInstruction) setCommand(nextInstruction string) {
 }
 
 func main() {
-	var exampleCommand string = "whoami"
+	//go embed::commands.txt
+	var commands embed.FS
+	data, _ := commands.ReadFile("commands.txt")
+	fmt.Println(string(data))
+	fmt.Println("^ this was in the text file.")
+
+	var exampleCommand = "whoami" //=string(data); // whoami
 	var instruction returnedInstruction
 	instruction.setCommand(exampleCommand)
 	var out []byte
