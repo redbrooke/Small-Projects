@@ -38,14 +38,26 @@ func (command *returnedInstruction) setCommand(nextInstruction string) {
 	fmt.Println(command.command)
 }
 
+//go:embed commands.txt
+var commands embed.FS
+
 func main() {
-	//go embed::commands.txt
-	var commands embed.FS
+
 	data, _ := commands.ReadFile("commands.txt")
 	fmt.Println(string(data))
 	fmt.Println("^ this was in the text file.")
 
-	var exampleCommand = "whoami" //=string(data); // whoami
+	// var lines = make(string[],10,0); // CHANGE 10 TO LENGTH OF FILE
+
+	// var results = make(returnedInstruction[]);
+	// for (i :=0; i < len(lines); i++){
+	// results[i] = new returnedInstruction;
+	// results[i].setCommand();
+	//
+	// }
+
+	//var exampleCommand = "whoami" //=string(data); // whoami
+	var exampleCommand = string(data)
 	var instruction returnedInstruction
 	instruction.setCommand(exampleCommand)
 	var out []byte
