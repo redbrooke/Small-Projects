@@ -3,8 +3,8 @@ package main
 import (
 	"embed"
 	"fmt"
-	"log"
 	"os/exec"
+	"strings"
 )
 
 type returnedInstruction struct {
@@ -25,9 +25,13 @@ func (command *returnedInstruction) execute() ([]byte, error) {
 	fmt.Println(command.command)
 	fmt.Println("Command run")
 	if err != nil {
-		log.Fatal(err)
+		command.success = false
+	} else {
+		command.success = true
 	}
 	fmt.Printf("%s\n", out)
+	command.output = string(out)
+	command.err = err
 	return out, err
 }
 
@@ -42,28 +46,22 @@ func (command *returnedInstruction) setCommand(nextInstruction string) {
 var commands embed.FS
 
 func main() {
-
 	data, _ := commands.ReadFile("commands.txt")
-	fmt.Println(string(data))
-	fmt.Println("^ this was in the text file.")
-
-	// var lines = make(string[],10,0); // CHANGE 10 TO LENGTH OF FILE
-
-	// var results = make(returnedInstruction[]);
-	// for (i :=0; i < len(lines); i++){
-	// results[i] = new returnedInstruction;
-	// results[i].setCommand();
-	//
-	// }
-
-	//var exampleCommand = "whoami" //=string(data); // whoami
-	var exampleCommand = string(data)
-	var instruction returnedInstruction
-	instruction.setCommand(exampleCommand)
+	commandSlice := strings.Split(string(data), "\n")
 	var out []byte
 	var err error
-	out, err = instruction.execute()
-	fmt.Println("hello")
+
+	var results = make([]returnedInstruction, len(commandSlice))
+	for i := 0; i < len(commandSlice); i++ {
+		fmt.Println("----------------------------------")
+		var currentCommand = new(returnedInstruction)
+		currentCommand.setCommand(commandSlice[i])
+		out, err = currentCommand.execute()
+		results[i] = *currentCommand
+	}
+
 	fmt.Println(out)
 	fmt.Println(err)
+	fmt.Println(results[0].output)
+
 }
