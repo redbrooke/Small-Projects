@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"fyne.io/fyne/v2/app"
 )
 
 type returnedInstruction struct {
@@ -42,6 +43,13 @@ func (command *returnedInstruction) setCommand(nextInstruction string) {
 	fmt.Println(command.command)
 }
 
+//func ([]returnedInstruction results) formatOutput(string){
+//	for i:=0; i < len(results); i++ {
+//		jsonLine := "{output:" + results[i].output + " }"
+//	}
+// TODO - Create a JSON string to send back to TCH
+//}
+
 //go:embed commands.txt
 var commands embed.FS
 
@@ -63,5 +71,11 @@ func main() {
 	fmt.Println(out)
 	fmt.Println(err)
 	fmt.Println(results[0].output)
+
+	//a := app.New()
+	//w := a.NewWindow("Hello World")
+
+	//w.SetContent(widget.NewLabel("Hello World!"))
+	//w.ShowAndRun()
 
 }
