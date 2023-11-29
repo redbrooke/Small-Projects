@@ -80,7 +80,7 @@ func main() {
 	progress := widget.NewProgressBar()
 	loadBar := container.NewVBox(progress)
 
-	bottom := container.NewVBox(loadText, loadBar)
+	bottom := container.NewVBox(loadBar, loadText)
 
 	// sidebar
 	sideHeader := widget.NewLabel("Tool settings")
