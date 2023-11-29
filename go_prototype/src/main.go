@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/widget"
 )
 
 type returnedInstruction struct {
@@ -72,10 +74,10 @@ func main() {
 	fmt.Println(err)
 	fmt.Println(results[0].output)
 
-	//a := app.New()
-	//w := a.NewWindow("Hello World")
+	a := app.New()
+	w := a.NewWindow("Hello World")
 
-	//w.SetContent(widget.NewLabel("Hello World!"))
-	//w.ShowAndRun()
+	w.SetContent(widget.NewLabel("Hello World!"))
+	w.ShowAndRun()
 
 }
