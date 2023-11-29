@@ -3,10 +3,15 @@ package main
 import (
 	"embed"
 	"fmt"
+	"image/color"
+	"log"
 	"os/exec"
 	"strings"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -60,24 +65,53 @@ func main() {
 	commandSlice := strings.Split(string(data), "\n")
 	var out []byte
 	var err error
-
 	var results = make([]returnedInstruction, len(commandSlice))
-	for i := 0; i < len(commandSlice); i++ {
-		fmt.Println("----------------------------------")
-		var currentCommand = new(returnedInstruction)
-		currentCommand.setCommand(commandSlice[i])
-		out, err = currentCommand.execute()
-		results[i] = *currentCommand
-	}
 
 	fmt.Println(out)
 	fmt.Println(err)
 	fmt.Println(results[0].output)
 
 	a := app.New()
-	w := a.NewWindow("Hello World")
+	w := a.NewWindow("The Cyber Helpline - Collection tool")
+	w.Resize(fyne.NewSize(1000, 500))
 
-	w.SetContent(widget.NewLabel("Hello World!"))
+	// bottom box
+	loadText := widget.NewLabel("Waiting for scan...")
+	progress := widget.NewProgressBar()
+	loadBar := container.NewVBox(progress)
+
+	bottom := container.NewVBox(loadText, loadBar)
+
+	// sidebar
+	sideHeader := widget.NewLabel("Tool settings")
+
+	startScan := widget.NewButton("Start scan", func() {
+		for i := 0; i < len(commandSlice); i++ {
+			fmt.Println("----------------------------------")
+			var currentCommand = new(returnedInstruction)
+			currentCommand.setCommand(commandSlice[i])
+			out, err = currentCommand.execute()
+			results[i] = *currentCommand
+			progress.SetValue(float64(i) / float64(len(commandSlice)))
+		}
+		progress.SetValue(1.0)
+	})
+
+	settings := widget.NewButton("Show finished scan", func() {
+		log.Println("tapped")
+	})
+
+	openFile := widget.NewButton("Settings", func() {
+		log.Println("tapped")
+	})
+	sidebar := container.NewVBox(sideHeader, startScan, openFile, settings)
+
+	// body
+
+	middle := canvas.NewText("content", color.White)
+	content := container.NewBorder(nil, bottom, sidebar, nil, middle)
+	w.SetContent(content)
+
 	w.ShowAndRun()
 
 }
