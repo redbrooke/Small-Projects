@@ -3,9 +3,10 @@ package main
 import (
 	"embed"
 	"fmt"
-	"image/color"
 	"log"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -23,23 +24,26 @@ type returnedInstruction struct {
 }
 
 func (command *returnedInstruction) execute() ([]byte, error) {
-	fmt.Println("Running")
-	cmd := exec.Command("powershell", "-nologo", "-noprofile", "-command", command.command)
+	fmt.Println("Running:", command.command)
 
-	fmt.Println("pipe open")
+	cmd := exec.Command("powershell", "-nologo", "-noprofile", "-command", command.command)
 
 	out, err := cmd.CombinedOutput()
 	fmt.Println(out)
 	fmt.Println(command.command)
-	fmt.Println("Command run")
-	if err != nil {
+	fmt.Println("Command run:", command.command)
+
+	switch {
+	case err != nil:
 		command.success = false
-	} else {
+	default:
 		command.success = true
 	}
+
 	fmt.Printf("%s\n", out)
 	command.output = string(out)
 	command.err = err
+
 	return out, err
 }
 
@@ -50,30 +54,37 @@ func (command *returnedInstruction) setCommand(nextInstruction string) {
 	fmt.Println(command.command)
 }
 
-//func ([]returnedInstruction results) formatOutput(string){
-//	for i:=0; i < len(results); i++ {
-//		jsonLine := "{output:" + results[i].output + " }"
-//	}
-// TODO - Create a JSON string to send back to TCH
-//}
+func createSettings(a fyne.App, iconResource *fyne.StaticResource) {
+	w2 := a.NewWindow("Settings Menu")
+	w2.Resize(fyne.NewSize(400, 300))
+	w2.SetContent(container.NewVBox())
+	w2.SetIcon(iconResource)
+	w2.Show()
+}
+
+//go:embed helpline.png
+var imageData []byte
+
+//go:embed smallLogo.png
+var smallLogo []byte
 
 //go:embed commands.txt
 var commands embed.FS
 
 func main() {
-	data, _ := commands.ReadFile("commands.txt")
-	commandSlice := strings.Split(string(data), "\n")
-	var out []byte
-	var err error
-	var results = make([]returnedInstruction, len(commandSlice))
+	data, err := commands.ReadFile("commands.txt")
+	if err != nil {
+		log.Fatal("Error opening file:", err)
+	}
 
-	fmt.Println(out)
-	fmt.Println(err)
-	fmt.Println(results[0].output)
+	commandSlice := strings.Split(strings.TrimSpace(string(data)), "\n")
+	results := make([]returnedInstruction, len(commandSlice))
 
 	a := app.New()
 	w := a.NewWindow("The Cyber Helpline - Collection tool")
 	w.Resize(fyne.NewSize(1000, 500))
+	iconResource := fyne.NewStaticResource("icon.png", smallLogo)
+	w.SetIcon(iconResource)
 
 	// bottom box
 	loadText := widget.NewLabel("Waiting for scan...")
@@ -88,30 +99,76 @@ func main() {
 	startScan := widget.NewButton("Start scan", func() {
 		for i := 0; i < len(commandSlice); i++ {
 			fmt.Println("----------------------------------")
-			var currentCommand = new(returnedInstruction)
+			currentCommand := new(returnedInstruction)
 			currentCommand.setCommand(commandSlice[i])
-			out, err = currentCommand.execute()
+			out, err := currentCommand.execute()
 			results[i] = *currentCommand
 			progress.SetValue(float64(i) / float64(len(commandSlice)))
+
+			if err != nil {
+				log.Printf("Error executing command %s: %v", commandSlice[i], err)
+			}
+			fmt.Printf("Output of command %s: %s\n", commandSlice[i], out)
 		}
 		progress.SetValue(1.0)
+
+		filename := "The Cyber Helpline Output.txt"
+		content := []byte("Your scan output\n")
+		file, err := os.Create(filename)
+		defer file.Close()
+		if err != nil {
+			log.Println("Error opening file:", err)
+		}
+		for _, result := range results {
+			newString := fmt.Sprintf("%+v", result)
+			writeableOutput := []byte(newString)
+			content = append(content, writeableOutput...)
+		}
+		bytesWritten, err := file.Write(content)
+		if err != nil {
+			log.Println("Error when writing to file:", err)
+			return
+		}
+		fmt.Printf("Bytes written: %d\n", bytesWritten)
 	})
 
-	settings := widget.NewButton("Show finished scan", func() {
+	openFile := widget.NewButton("Show finished scan", func() {
 		log.Println("tapped")
+		// Get the current directory
+		dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+		if err != nil {
+			panic(err)
+		}
+
+		// Open the file browser for Windows
+		cmd := exec.Command("explorer", dir)
+		err = cmd.Start()
+		if err != nil {
+			panic(err)
+		}
 	})
 
-	openFile := widget.NewButton("Settings", func() {
+	settings := widget.NewButton("Settings", func() {
 		log.Println("tapped")
+		createSettings(a, iconResource)
 	})
 	sidebar := container.NewVBox(sideHeader, startScan, openFile, settings)
 
 	// body
 
-	middle := canvas.NewText("content", color.White)
+	bodyImage := fyne.NewStaticResource("bodyImage.png", imageData)
+	finalImage := canvas.NewImageFromResource(bodyImage)
+	logo := container.NewVBox(
+		finalImage,
+		widget.NewLabel("This is an image"),
+	)
+
+	edge := widget.NewSeparator()
+	window := widget.NewTextGridFromString("hello\nexample\ntext\nWelcome to the cyber helpline's data collection tool\nLorem ipsum dolor sit amet, consectetur adipiscing elit, ")
+	middle := container.NewBorder(edge, edge, edge, edge, window)
+
 	content := container.NewBorder(nil, bottom, sidebar, nil, middle)
 	w.SetContent(content)
 
 	w.ShowAndRun()
-
 }
