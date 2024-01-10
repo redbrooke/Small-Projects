@@ -1,4 +1,16 @@
-whoami
-pwd
-OOOF
-dir
+Get-NetIPConfiguration | Format-Table -AutoSize
+Get-NetIPAddress | Format-Table -AutoSize
+Get-NetNeighbor | Format-Table -AutoSize
+Get-NetRoute | Format-Table -AutoSize
+Get-NetTCPConnection
+Get-SMBShare
+Get-Process 
+Get-Process -FileVersionInfo
+Get-service
+Get-CimInstance Win32_StartupCommand | select Name, command, Location, User
+Get-ScheduledTask | select TaskName,State
+Get-WmiObject -Class Win32_Product
+Get-ComputerInfo
+Get-ChildItem -Path Env:
+Get-LocalUser
+Get-LocalGroup

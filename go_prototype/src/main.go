@@ -71,6 +71,9 @@ var smallLogo []byte
 //go:embed commands.txt
 var commands embed.FS
 
+//go:embed shield.png
+var shield []byte
+
 func main() {
 	data, err := commands.ReadFile("commands.txt")
 	if err != nil {
@@ -152,20 +155,20 @@ func main() {
 		log.Println("tapped")
 		createSettings(a, iconResource)
 	})
-	sidebar := container.NewVBox(sideHeader, startScan, openFile, settings)
-
-	// body
 
 	bodyImage := fyne.NewStaticResource("bodyImage.png", imageData)
 	finalImage := canvas.NewImageFromResource(bodyImage)
-	logo := container.NewVBox(
-		finalImage,
-		widget.NewLabel("This is an image"),
-	)
+
+	sidebar := container.NewVBox(sideHeader, finalImage, startScan, openFile, settings)
+
+	// body
+
+	shieldImage := fyne.NewStaticResource("shield.png", shield)
+	shieldImageFinal := canvas.NewImageFromResource(shieldImage)
 
 	edge := widget.NewSeparator()
-	window := widget.NewTextGridFromString("hello\nexample\ntext\nWelcome to the cyber helpline's data collection tool\nLorem ipsum dolor sit amet, consectetur adipiscing elit, ")
-	middle := container.NewBorder(edge, edge, edge, edge, window)
+	//window := widget.NewTextGridFromString("No scan completed ")
+	middle := container.NewBorder(edge, edge, edge, edge, shieldImageFinal)
 
 	content := container.NewBorder(nil, bottom, sidebar, nil, middle)
 	w.SetContent(content)
