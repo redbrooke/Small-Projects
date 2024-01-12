@@ -60,6 +60,8 @@ func createSettings(a fyne.App, iconResource *fyne.StaticResource) {
 	w2.SetContent(container.NewVBox())
 	w2.SetIcon(iconResource)
 	w2.Show()
+
+	CheckForAdm := widget.NewButton("Start scan", func() {})
 }
 
 //go:embed helpline.png
@@ -159,18 +161,33 @@ func main() {
 	bodyImage := fyne.NewStaticResource("bodyImage.png", imageData)
 	finalImage := canvas.NewImageFromResource(bodyImage)
 
-	sidebar := container.NewVBox(sideHeader, finalImage, startScan, openFile, settings)
+	sidebar := container.NewVBox(sideHeader,
+		finalImage,
+		startScan,
+		openFile,
+		settings)
 
 	// body
 
 	shieldImage := fyne.NewStaticResource("shield.png", shield)
 	shieldImageFinal := canvas.NewImageFromResource(shieldImage)
+	shieldImageFinal.FillMode = canvas.ImageFillContain
+	shieldIcon := container.NewStack(shieldImageFinal)
+	shieldIcon.Resize(fyne.NewSize(50, 50))
 
 	edge := widget.NewSeparator()
 	//window := widget.NewTextGridFromString("No scan completed ")
-	middle := container.NewBorder(edge, edge, edge, edge, shieldImageFinal)
+	middle := container.NewBorder(edge,
+		edge,
+		edge,
+		edge,
+		shieldIcon)
 
-	content := container.NewBorder(nil, bottom, sidebar, nil, middle)
+	content := container.NewBorder(nil,
+		bottom,
+		sidebar,
+		nil,
+		middle)
 	w.SetContent(content)
 
 	w.ShowAndRun()
