@@ -61,7 +61,23 @@ func createSettings(a fyne.App, iconResource *fyne.StaticResource) {
 	w2.SetIcon(iconResource)
 	w2.Show()
 
-	CheckForAdm := widget.NewButton("Start scan", func() {})
+	checkbox1 := widget.NewCheck("Item 1", func(checked bool) {
+		fmt.Println("Checkbox 1:", checked)
+	})
+	checkbox2 := widget.NewCheck("Item 2", func(checked bool) {
+		fmt.Println("Checkbox 2:", checked)
+	})
+	checkbox3 := widget.NewCheck("Item 3", func(checked bool) {
+		fmt.Println("Checkbox 3:", checked)
+	})
+	label1 := widget.NewLabel("Checklist Example:")
+
+	checklistContainer := container.NewVBox(label1, checkbox1, checkbox2, checkbox3)
+
+	CheckForAdm := widget.NewButton("Check for Administrator permissions", func() {})
+	settingsMenu := container.NewVBox(CheckForAdm, checklistContainer)
+	w2.SetContent(settingsMenu)
+
 }
 
 //go:embed helpline.png
@@ -118,7 +134,7 @@ func main() {
 		progress.SetValue(1.0)
 
 		filename := "The Cyber Helpline Output.txt"
-		content := []byte("Your scan output\n")
+		content := []byte("------\nYour scan output\nPlease email this to your case handler\n------\n\n")
 		file, err := os.Create(filename)
 		defer file.Close()
 		if err != nil {
@@ -160,9 +176,11 @@ func main() {
 
 	bodyImage := fyne.NewStaticResource("bodyImage.png", imageData)
 	finalImage := canvas.NewImageFromResource(bodyImage)
+	finalLogo := container.NewStack(finalImage)
+	finalLogo.Resize(fyne.NewSize(500, 500))
 
 	sidebar := container.NewVBox(sideHeader,
-		finalImage,
+		finalLogo,
 		startScan,
 		openFile,
 		settings)
