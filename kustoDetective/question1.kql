@@ -1,0 +1,11 @@
+DetectiveCases
+| join kind=inner (
+    DetectiveCases
+    | where EventType == 'CaseOpened'
+    | extend payday = toreal(Properties.Bounty)
+    | project payday, CaseId
+    ) on CaseId
+| where EventType == "CaseSolved"
+| summarize arg_min(Timestamp,*) by CaseId
+| summarize sum(payday) by DetectiveId
+| sort by sum_payday
