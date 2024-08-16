@@ -1,0 +1,12 @@
+PhoneCalls
+| extend origin=tostring(Properties.Origin), destination=tostring(Properties.Destination), hidden=tobool(Properties.IsHidden)
+| join kind=inner (
+    PhoneCalls
+    | where EventType == "Disconnect"
+    | extend disconnectedBy=(Properties.DisconnectedBy)
+    | project disconnectedBy, CallConnectionId
+) on CallConnectionId
+| where EventType == "Connect"
+| where disconnectedBy == "Destination"
+| summarize count() by origin
+| sort by count_
