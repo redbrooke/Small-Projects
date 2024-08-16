@@ -1,0 +1,11 @@
+let startDate = datetime(2023-04-01);
+let endDate = datetime(2023-04-30);
+Consumption  
+| where Consumed > 0 
+| where Timestamp between(startDate .. endDate)
+| distinct HouseholdId, MeterType, Consumed, Timestamp
+// | summarize TotalConsumed = sum(Consumed) by MeterType  
+| lookup Costs on MeterType  
+| extend TotalCost = Consumed*Cost  
+//| summarize count()
+| summarize sum(TotalCost)
