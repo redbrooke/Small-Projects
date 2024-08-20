@@ -2,4 +2,4 @@ CarsTraffic
 | join kind=rightouter (
     StolenCars
 ) on VIN
-| summarize count_distinct(VIN1)
+| summarize Timestamp=arg_max(Timestamp, VIN, Ave, Street) by VIN
