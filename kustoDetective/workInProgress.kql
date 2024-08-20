@@ -1,5 +1,23 @@
+let _lookupWindow=10m;
 CarsTraffic
 | join kind=rightouter (
     StolenCars
 ) on VIN
-| summarize Timestamp=arg_max(Timestamp, VIN, Ave, Street) by VIN
+| summarize finalSeen=arg_max(Timestamp, *) by VIN
+//| extend TimeKey = range(bin(finalSeen, 1min), finalSeen + _lookupWindow, 1min)
+//| mv-expand TimeKey to typeof(datetime) 
+| join kind=inner(
+    CarsTraffic
+    | where Timestamp between (finalSeen .. 10m)
+    // MAKE TIMESTAMP INTO FINALSEEN, AND FILTER BY A CERTAIN RANGE
+) on Ave, Street
+
+// TO DO THIS YOU NEED TO USE BIN()!!! - https://learn.microsoft.com/en-us/azure/data-explorer/kusto/query/bin-function AKA floor()
+
+// Find last one of the second cars
+
+// Count by location
+
+
+//| extend TimeKey = range(bin(finalSeen, 1min), finalSeen + _lookupWindow, 1min)
+
