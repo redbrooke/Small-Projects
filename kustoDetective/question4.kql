@@ -1,0 +1,22 @@
+// TO DO THIS YOU NEED TO USE BIN()!!! - https://learn.microsoft.com/en-us/azure/data-explorer/kusto/query/bin-function AKA floor()
+CarsTraffic
+| join kind=rightouter (
+    StolenCars
+) on VIN
+| summarize finalSeen=arg_max(Timestamp, *) by VIN
+| extend roundedTime = bin(finalSeen, 10m)
+| join kind=inner(
+    CarsTraffic
+    | extend roundedTime = bin(Timestamp, 10m)
+    // MAKE TIMESTAMP INTO FINALSEEN, AND FILTER BY A CERTAIN RANGE
+) on roundedTime, Ave, Street
+| project-rename NEW_VIN = VIN2
+| join kind=inner(
+    CarsTraffic
+    | project-rename NEW_VIN = VIN
+)on NEW_VIN
+| summarize finalSeen=arg_max(Timestamp1, *) by NEW_VIN
+| where Ave2 != 223 and Street2 != 86
+| summarize count() by Street2, Ave2
+| sort by count_
+
