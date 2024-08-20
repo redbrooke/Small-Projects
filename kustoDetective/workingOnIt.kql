@@ -1,0 +1,14 @@
+//NetworkMetrics
+//| sort by NewConnections
+//| take 10
+//| evaluate ipv4_lookup(IpInfo, ClientIP, IpCidr)
+
+NetworkMetrics
+| summarize avg(BytesReceived) by bin(Timestamp, 1d)
+| render timechart by Timestamp
+//| make-series count(), avg(BytesReceived) on Timestamp step 1d
+
+NetworkMetrics
+| make-series Clients=dcount(ClientIP) on Timestamp to datetime(2023-07-08) step 1h
+| extend forecast=series_decompose_forecast(Clients, 24*7)
+| render timechart
