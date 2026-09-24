@@ -1,0 +1,622 @@
+DetectiveCases
+| where isnotnull(Properties)
+| project CaseId, Properties
+| join kind=rightouter DetectiveCases on CaseId
+| where EventType == "CaseSolved" and isnotnull(Properties)
+| summarize arg_min(Timestamp, *) by CaseId
+| extend payout = toint(Properties.Bounty)
+| distinct CaseId, DetectiveId, payout
+| summarize sum(payout) by DetectiveId
+| order by sum_payout
+
+Consumption
+| where Consumed > 0
+| distinct Timestamp, HouseholdId, MeterType, Consumed
+| join kind=leftouter Costs on MeterType
+| extend bill = (Consumed * Cost)
+| summarize sum(bill)
+
+PhoneCalls
+| extend hidden = Properties.IsHidden
+| where hidden == True
+| join PhoneCalls on CallConnectionId
+| extend hangup = Properties1.DisconnectedBy
+| where hangup == "Destination"
+| extend caller = Properties.Origin 
+| summarize count() by tostring(caller)
+| order by count_
+
+10/06/2023, 14:10:00
+
+CarsTraffic
+| join kind=rightouter StolenCars on VIN
+| summarize arg_max(Timestamp, *) by VIN
+| project-away VIN1
+// the next line pulls cars that were parked at the same place as stolen cars.
+| join kind=inner CarsTraffic on Ave, Street 
+| project-away Ave1, Street1
+// drop ones before the stolen car arrived
+| where Timestamp < Timestamp1
+| where abs(datetime_diff('minute', Timestamp, Timestamp1)) <= 5
+| extend Timestamp = Timestamp1, VIN = VIN1
+| project-away Timestamp1, VIN1
+// Pulls in the data to find the final dest
+| join CarsTraffic on VIN
+| project-away VIN1
+| where Timestamp < Timestamp1
+// takes the last known location of the final VIN
+| summarize arg_max(Timestamp1, *) by VIN
+| extend dest = strcat(Ave1, " " , Street1)
+| summarize count() by dest
+| order by count_
+
+
+// Plan:
+// Use bin to normalize the times into workable blocks. 
+// Generate a time series from ?????? LOGS?
+// Generate a forcast for every time block in a given day
+// Compare the forcast to the actual value
+// Render the forecast and actual on a graph to visualise the difference.
+
+NetworkMetrics
+// Use bin to normalize the times into workable blocks. 
+| extend normalizedTime = bin(Timestamp, 1h)
+// Generate a time series from ?????? LOGS?
+| make-series avg(BytesSent) on normalizedTime step 1h
+// Generate a forcast for every time block in a given day
+| extend freaks = series_decompose(avg_BytesSent)
+| extend isFreaks = series_decompose_anomalies(avg_BytesSent, 1.5, -1, 'linefit')
+//| extend important = series_multiply(100, isFreaks)
+| render anomalychart with(anomalycolumns=isFreaks, title='Web app. traffic of a month, anomalies') //https://learn.microsoft.com/en-us/kusto/query/visualization-anomalychart?view=microsoft-fabric
+
+^ nice but useless.
+
+// https://learn.microsoft.com/en-us/azure/azure-monitor/logs/kql-machine-learning-azure-monitor
+NetworkMetrics
+// Use bin to normalize the times into workable blocks. 
+//| extend normalizedTime = bin(Timestamp, 30m)
+| make-series talkers=dcount(ClientIP) on Timestamp step 1d by ClientIP // stuffSent=sum(BytesSent), 
+| extend(Anomalies, AnomalyScore, ExpectedUsage) = series_decompose_anomalies(talkers)
+| mv-expand Timestamp to typeof(datetime), Anomalies to typeof(double),AnomalyScore to typeof(double), ExpectedUsage to typeof(long)
+| where Anomalies != 0
+//| sort by abs(AnomalyScore) desc
+| top 1 by AnomalyScore
+| evaluate ipv4_lookup(IpInfo, ClientIP, IpCidr)
+
+
+
+StorageArchiveLogs
+| parse EventText with TransactionType " blob transaction: '" BlobURI "'" *
+| parse EventText with * "(" Reads:long "reads)" *
+| parse EventText with * "completely " removed
+//| where removed != "" or TransactionType != "Delete"
+| project-away removed
+//| extend Host = tostring(parse_url(BlobURI).Host)
+| summarize totalread=sumif(Reads, TransactionType == 'Read'), totalcreate=sumif(1, TransactionType == 'Create'), totaldelete=sumif(1, TransactionType == 'Delete'),  finalSeen = arg_max(Timestamp, *), firstSeen = arg_min(Timestamp, *) by BlobURI
+| where totalcreate != 0 and totaldelete != 0
+| project-away Reads, TransactionType1, Reads1, TransactionType
+| extend badTime = datetime_diff('minute', finalSeen, firstSeen)
+| where badTime < 4320 // three days
+| order by badTime asc 
+
+.set-or-append ransomeNote <|
+print Text =
+``` 12204/497 62295/24 50883/678 47108/107 193867/3,
+45534/141 hidden 100922/183 143461/1 1181/505 46187/380.
+41526/155 66447/199 30241/114, 33745/154 12145/387 46437/398 177191/131:
+293/64 41629/1506 210038/432, 41612/803 216839/1.
+
+404/258 rules 40/186 1472/222 122894/2 46081/105:
+41594/650 32579/439 44625/141 184121/19 33254/348 357/273 32589/821,
+46171/687 punctuations 62420/10 50509/48 1447/128,
+176565/82'56721/591 561/225 insensitive, 30744/129 76197/32.
+
+1319/42 41599/216 68/457 136016/146, 42420/126'46198/389 42429/158 40091/108 41667/252,
+1515/555 177593/223 176924/73 45889/65 159836/96 35080/384 32578/199.
+1607/167 124996/9 71/56, 1303/187 45640/1114 72328/247 75802/11,
+1168/146 163380/12 57541/116 206122/738 365/267 46026/211 46127/19.
+
+119295/425 45062/128 12198/133 163917/238 45092/8 54183/4 42453/82:
+561/433 9/387 37004/287 1493/118 41676/38 163917/238 3159/118 63264/687
+1/905 1493/109 43723/252, 136355/1 1159/134 40062/172 32588/604,
+158574/1 45411/8 10/892 127587/175 - 633/9 72328/247 1514/615 42940/138.
+
+164958/84 221014/479 151526/7 111124/138, 41668/206 34109/46 1514/555,
+147789/2 3228/152 993/323 166477/167 178042/167, 50753/91'207786/8 12/372.
+1108/158'42423/150 12/309 66154/9 213566/11 44981/158 1197/300
+40184/149 92994/63-71071/179 75093/7 211718/18 74211/5 46144/399 .
+```
+
+
+let decode = ransomeNote
+| project Text=tostring(Text)
+| project Text = tolower(Text)
+| project Text=replace_strings(Text,  dynamic(['.', ',', ':', '\'', '-']), dynamic([' ',' ',' ',' ',' ']))
+| extend output = extract_all(@'(^|)(\d+)/(\d+)(|\n|\r)', Text)
+| mv-expand output
+| mv-expand ObjectId = output[1], strNumber=output[2]
+| project-away Text, output
+| project tolong(ObjectId), strNumber
+| serialize RowOrder = row_number()
+//| take 22
+| join kind=leftouter NationalGalleryArt on ObjectId
+| order by RowOrder asc
+| project ProvenanceText=tolower(ProvenanceText), ObjectId, strNumber
+| project ProvenanceText=strcat(ProvenanceText), ObjectId, strNumber 
+//| project ProvenanceText=replace_regex(ProvenanceText, @"\'", ""), ObjectId, strNumber // remove ALL apostrophes
+//| where ObjectId == "42420" //DELETEME!!!!!!!!!!!!
+//| project ProvenanceText=replace_regex(ProvenanceText, @"(?:\D)-(?:\D)", ""), ObjectId, strNumber // remove hyphons not within dates.
+//| project ProvenanceText=replace_regex(ProvenanceText, @"*//*", " "), ObjectId, strNumber // REmove all slashes            \[\d\]|\[\d\d\] ?????????????????????/
+//| project ProvenanceText=replace_regex(ProvenanceText, @"\[\d\]|\[\d\d\]*", " "), ObjectId, strNumber // REMOVE ALL REFERENCES
+//| project ProvenanceText=replace_regex(ProvenanceText, @"[[:punct:]]", " "), ObjectId, strNumber // Remove all other punctuation
+//| project ProvenanceText=replace_regex(ProvenanceText,@"(\b[A-Za-z]+\b|\b[a-zA-Z]*'[a-zA-Z]+\b)", ""), ObjectId, strNumber // \b[A-Za-z]+\b|\b[a-zA-Z]*'[a-zA-Z]+\b
+//| project ProvenanceText=replace_regex(ProvenanceText,@'\d', ""), ObjectId, strNumber// EXPERIMENT, DROP ALL NUMBERS
+//| extend words = extract_all(@'(\S+?)[ |$]', ProvenanceText) // FIX ME REMOVE THE [123 345]
+//| extend words = extract_all(@"(\b[A-Za-z]+\b|\b[a-zA-Z]*'[a-zA-Z]+\b|\b[\d]+\b)", ProvenanceText) 
+| extend words = extract_all(@"(\w+)", ProvenanceText) 
+| extend strNumber= toint(strNumber)
+| summarize target = make_list(strcat(tostring(ObjectId), "/", tostring(strNumber))), words = make_list(words[strNumber])
+| project target, words, key="FUBAR";
+ransomeNote
+| extend key="FUBAR"
+| join decode on key
+| extend  NewText = replace_strings(tostring(Text), target, words)
+| project NewText
+
+NationalGalleryArt
+| project Title, ObjectId
+//| where Title matches regex @"\.$" // DO I NEED THIS?
+| extend Title= tolower(Title)
+| extend target = extract_all(@'(\w+)', Title)
+| mv-expand target
+| project tostring(target)
+| where strlen(target) > 2
+| summarize occurance = count() by target
+| order by occurance desc 
+// LINEBREAK HERE TO FIND VALUE BELOW THE KING
+| summarize makelist(target), count() by occurance
+//| where count_ > 1
+| order by count_ desc 
+| where occurance == 11 // number of times month occurs
+
+NationalGalleryArt
+| where * matches regex @"(0[1-9]|[12][0-9]|3[01]).(19|20)\d{2}.(0[1-9]|1[0-2])"
+
+
+
+CEEB51	11/08/2023, 05:11:50
+AMIL958	11/08/2023, 05:13:00
+CTLA522	11/08/2023, 05:14:40
+JNFA504	11/08/2023, 05:15:40
+OJIT393	11/08/2023, 05:16:00
+
+
+let s2_precision = 12; // ~3km 
+let possible_first_flights = (
+Airports
+| where Name == "Hamad International Airport"
+| extend key=geo_point_to_s2cell(lon, lat, s2_precision)
+| join kind=inner (
+    Flights
+    | extend key=geo_point_to_s2cell(lon, lat, s2_precision)
+    | where onground // Only consider planes that were on the ground
+) on key
+| where Timestamp between (datetime("08/11/2023, 03:30:00")..datetime("08/11/2023, 05:30:00"))
+| summarize startTime=arg_max(Timestamp, *) by callsign); // DO WE NEED STARTTIME HERE?
+possible_first_flights
+
+
+let possible_first_flight_history = (possible_first_flights
+| join Flights on callsign
+| where Timestamp > startTime
+| project-away startTime, callsign1
+| order by Timestamp asc
+| extend LocationCode=geo_point_to_s2cell(lon, lat, s2_precision)); // 10kms.
+let overlapping_flights =(Flights
+| extend LocationCode=geo_point_to_s2cell(lon, lat, s2_precision) // 10kms.
+| where onground == false
+| join possible_first_flight_history on LocationCode, Timestamp
+| where callsign != callsign1
+| where geoaltitude < geoaltitude1
+| project Timestamp, PossibleOtherFlight=callsign, FirstFlight=callsign1, OtherFlightAltitude=geoaltitude, OriginalFlightAltitude=geoaltitude1,
+OriginalFlightLat = lat1, OriginalFlightLong = lon1, OtherFlightLat = lat, OtherFlightLong = lon, LocationCode);
+Airports
+| extend LocationCode=geo_point_to_s2cell(lon, lat, s2_precision)
+| join kind=inner overlapping_flights on LocationCode
+
+
+
+
+
+
+
+
+
+let s2_precision = 15; // ~3km 
+Airports
+| where Name == "Hamad International Airport"
+| extend key=geo_point_to_s2cell(lon, lat, s2_precision)
+| join kind=inner (
+    Flights
+    | extend key=geo_point_to_s2cell(lon, lat, s2_precision)
+    | where onground // Only consider planes that were on the ground
+) on key
+| where Timestamp between (datetime("08/11/2023, 03:30:00")..datetime("08/11/2023, 05:30:00"))
+
+
+
+
+let s2_precision = 12; // ~3km 
+let possible_first_flights = (
+Airports
+| where Name == "Hamad International Airport"
+| extend key=geo_point_to_s2cell(lon, lat, s2_precision)
+| join kind=inner (
+    Flights
+    | extend key=geo_point_to_s2cell(lon, lat, s2_precision)
+    | where onground // Only consider planes that were on the ground
+) on key
+| where Timestamp between (datetime("08/11/2023, 03:30:00")..datetime("08/11/2023, 05:30:00"))
+| summarize startTime=arg_max(Timestamp, *) by callsign); // DO WE NEED STARTTIME HERE?
+let possible_first_flight_history = (possible_first_flights
+| join Flights on callsign
+| where Timestamp > startTime
+| project-away startTime, callsign1
+| order by Timestamp asc
+| extend LocationCode=geo_point_to_s2cell(lon, lat, s2_precision)); // 10kms.
+let overlapping_flights =(Flights
+| extend LocationCode=geo_point_to_s2cell(lon, lat, s2_precision) // 10kms.
+| where onground == false
+| join possible_first_flight_history on LocationCode, Timestamp
+| where callsign != callsign1
+| where geoaltitude < geoaltitude1
+| project Timestamp, PossibleOtherFlight=callsign, FirstFlight=callsign1, OtherFlightAltitude=geoaltitude, OriginalFlightAltitude=geoaltitude1,
+OriginalFlightLat = lat1, OriginalFlightLong = lon1, OtherFlightLat = lat, OtherFlightLong = lon, LocationCode);
+let jumpFinalLocations = (overlapping_flights
+| project-rename callsign = PossibleOtherFlight, DepartingTime = Timestamp
+| join kind=inner (
+    Flights    
+    | where onground // Check planes that are only on the ground
+    | summarize (LandingTime, LandingLon, LandingLat)=arg_max(Timestamp, lon, lat) by callsign 
+)  on callsign
+| order by callsign asc
+| where LandingTime > DepartingTime
+| extend key=geo_point_to_s2cell(LandingLon, LandingLat, s2_precision)
+| lookup (Airports | extend key=geo_point_to_s2cell(lon, lat, s2_precision)) on key
+| where geo_distance_2points(lon, lat, LandingLon, LandingLat) < 5000 // Assume a 5km radius is enough
+| distinct Name, municipality);
+jumpFinalLocations
+
+//Airports
+//| extend LocationCode=geo_point_to_s2cell(lon, lat, s2_precision)
+//| join  overlapping_flights on LocationCode
+
+Sarratt, Herts
+
+
+let s2_precision = 15; 
+let possible_first_flights = (   
+Airports
+| where Name == "Hamad International Airport"
+| extend key=geo_point_to_s2cell(lon, lat, 10)
+| join kind=inner (
+    Flights
+    | extend key=geo_point_to_s2cell(lon, lat, 10)
+    | where onground // Only consider planes that were on the ground
+) on key
+| where Timestamp between (datetime("08/11/2023, 03:30:00")..datetime("08/11/2023, 05:30:00"))
+| project callsign, Timestamp
+| summarize startTime=arg_max(Timestamp, *) by callsign); // DO WE NEED STARTTIME HERE?
+let possible_first_flight_history = (possible_first_flights
+| join Flights on callsign
+| where Timestamp > startTime
+| project-away startTime, callsign1
+| extend LocationCode=geo_point_to_s2cell(lon, lat, s2_precision)
+| project callsign, LocationCode, Timestamp, dohaalt = geoaltitude
+);
+let overlapping_flights =(Flights
+| extend LocationCode=geo_point_to_s2cell(lon, lat, s2_precision)
+| where onground == false
+| join possible_first_flight_history on LocationCode
+| where callsign != callsign1
+| where Timestamp1 between (Timestamp - 15m .. Timestamp + 30m)
+| where dohaalt > geoaltitude
+| project callsign , overlapTime = Timestamp
+| summarize overlapTime=arg_max(overlapTime, *) by callsign
+);
+let finalDest = (overlapping_flights
+| join Flights on callsign
+| where Timestamp > overlapTime 
+| where onground == true
+| extend key=geo_point_to_s2cell(lon, lat,12), LandingLat = lat, LandingLon = lon
+| project-away lat, lon, callsign1
+| summarize finalLocation=arg_min(Timestamp, *) by callsign);
+finalDest
+| lookup (Airports | extend key=geo_point_to_s2cell(lon, lat, 12)) on key
+| where municipality != ""
+| where geo_distance_2points(lon, lat, LandingLon, LandingLat) < 5000
+//| summarize distance=arg_max(geo_distance_2points(lon, lat, LandingLon, LandingLat), *) by callsign // only the closest distance 
+| summarize count() by municipality, Name
+
+
+Runs
+| summarize count() by RunnerID, bin(Timestamp, 7d)
+| where count_ > 2 and count_ < 5
+| summarize count() by RunnerID
+| where count_ == 3 // Only runners that run between 3 and 4 times a week every week.
+| join Runs on RunnerID
+| project-away RunnerID1, count_
+| where Distance between(8..12)
+| extend key=geo_point_to_s2cell(StartLat, StartLon,21)
+
+let target = Runs
+| distinct Timestamp, RunnerID, StartLat, StartLon, Distance
+| where Distance between(8.0..12.0) // Drop all runs that are too short or long.
+| summarize count() by RunnerID, startofweek(Timestamp)
+| where count_ between (3 .. 4)
+//| where count_ == 3 // Only runners that run between 3 and 4 times a week every week.
+| distinct RunnerID;
+let groups = Runs
+| distinct Timestamp, RunnerID, StartLat, StartLon
+| extend key=geo_point_to_s2cell(StartLat, StartLon,18)
+| extend closeTime = bin(Timestamp, 5m)
+| summarize make_list(RunnerID) by closeTime, key
+//| summarize make_list(RunnerID), lat=make_list(StartLat), lon=make_list(StartLon) by closeTime, key
+| where array_length(list_RunnerID) > 2;
+let krypto =  groups
+| mv-expand list_RunnerID
+| extend list_RunnerID= tostring(list_RunnerID)
+| join kind=inner (
+    target
+) on $left.list_RunnerID == $right.RunnerID
+| summarize count() by list_RunnerID
+| project RunnerID=list_RunnerID;
+krypto
+| join Runs on RunnerID
+//| distinct Timestamp, RunnerID, StartLat, StartLon
+//| extend toreal(StartLat),toreal(StartLon)
+| summarize  finallat=round(avg(StartLat),5) , finallon=round(avg(StartLon),5) by RunnerID
+| extend Link = strcat('https://www.google.com/maps/@', finallat, ',', finallon, ',3a,75y,252.01h,89.45t/data=!3m6!1e1!3m4!1s-1P!2e0!7i16384!8i8192')
+
+
+//vulnMachines
+//| join MachineLogs on Machine
+//| project-away Machine1
+//| summarize count() by EventType, Machine
+//| distinct EventType, Machine
+//| summarize count() by Machine
+let vulnMachines = MachineLogs // NOTE THIS ASSUMES NO ZERODAYS
+| where Message != "Backend periodic scan completed, 0 critical vulnerabilities were found."
+| where EventType == "PeriodicScan"
+| summarize count() by Machine
+| distinct Machine;
+let getMachineType = MachineLogs
+| where EventType == "PeriodicScan"
+| extend machineType = tostring(split(trim(' ', Message), " ")[0])
+| distinct Machine, machineType;
+
+
+let vuln = MachineLogs
+| where EventType == "PeriodicScan"
+| distinct Machine, Message
+| project Machine, machineType = tostring(split(trim(' ', Message), " ")[0]), numberOfVulns = tostring(split(trim(' ', Message), " ")[4])
+| summarize numberOfVulns = sum(toint(numberOfVulns)) by Machine, machineType
+| where numberOfVulns != 0
+| distinct Machine, machineType;
+let taskNode = MachineLogs
+| distinct *
+| where EventType == "IncomingRequest"
+| extend currentTask = tostring(split(tostring(split(trim(' ', Message), " ")[3]), "=")[1])
+| distinct Machine, currentTask
+| join kind=inner  (vuln | project Machine, machineType) on Machine
+| project-away Machine1
+;
+let taskEdge = MachineLogs
+| distinct *
+| where EventType == "SpawnTask"
+| extend nextTask = tostring(split(tostring(split(trim(' ', Message), " ")[5]), "=")[1])
+| extend currentTask =  tostring(split(tostring(split(trim(' ', Message), ": ")[0]), "=")[1])
+| distinct currentTask, nextTask, Machine
+| join kind=inner  (vuln | project Machine) on Machine
+| project-away Machine1;
+taskEdge
+| make-graph currentTask --> nextTask with taskNode on currentTask
+| graph-match (sourceFella)-[taskSent*1..67]->(destFella)
+  where sourceFella.machineType == "Gateway"and destFella.machineType == "Admin"
+  project destFella.Machine, hitMachines = map(taskSent, Machine), destFella.machineType, sourceFella.machineType
+
+MNX-71B4CC
+
+
+KuandaLogs
+//| where DetectiveId == "kvc470de475c64ad8907b1"
+| partition hint.strategy=native by DetectiveId
+(
+    order by Timestamp asc 
+     | scan with_match_id=id  declare(StartTime:datetime, EndTime:datetime) with (
+        step start output=none: 
+			Message has 'User entered the system, start collecting user encryption tokens.' => StartTime = Timestamp;
+        //step hit output=all:
+        //    Message has 'started (\'CaseAssigned\'). Captured user encryption token:';
+        step noStop output=none:
+            Message !has 'User session reset: all user encryption tokens are disposed.';
+        step completed output=all:
+			Message has "completed: user encryption token for this operation is disposed.";
+    )
+    | parse-where Message with "Operation id="operationId" completed: user encryption token for this operation is disposed."
+    | project DetectiveId, operationId
+)
+| join (KuandaLogs | parse-where Message with "Operation id="operationId" completed: user encryption token for this operation is disposed.") on operationId
+
+
+
+
+KuandaLogs
+//| where DetectiveId == "kvc470de475c64ad8907b1"
+| parse-where Message with "Sending an encrypted message, will use Dekrypt(@'"encryptedMessage"', strcat_array(<active-user-encryption-tokens>, \'\')) for decoding." 
+| distinct Timestamp, DetectiveId, encryptedMessage
+| join KuandaLogs on DetectiveId
+| distinct encryptedMessage, DetectiveId, encryptTime = Timestamp
+| join KuandaLogs on DetectiveId
+| distinct *
+| partition hint.strategy=native by DetectiveId(
+  order by Timestamp asc
+  | scan with_match_id=stepCount declare(SessionStartTime:datetime, EndTime:datetime, Token:dynamic) with(
+    step start output=all: Message has "User entered the system" or Message has "User session reset"  => SessionStartTime = Timestamp, Token = dynamic([]);
+    step token output=all: Message has "Captured user" or Message has "diposed" => Token = iff(Message has "Captured user",
+     bag_merge(Token, bag_pack(tostring(split(Message, " ", 1)), tostring(split(Message, " ", 8)))),
+     bag_remove_keys(Token, split(Message, " ", 1)) 
+     );
+    step HIT output=all: Timestamp > encryptTime and Message has "Sending" => EndTime = Timestamp, Token = token.Token;
+   )
+  // Fine where session is entered most recently before timestamp
+  // Grab all tokens inbetween
+  // Stop at the first "Session reset" after the encryptTIme
+)
+| order by Timestamp
+| extend target = bag_values(Token)
+
+| extend finalKey = extract(@"([a-zA-Z]+)", 1, tostring(Token))
+
+// pack_array(tostring(split(Message, " ", 1), extract(@"([a-zA-Z]+)", 1, tostring(split(Message, " ", 8)[0])) 
+| where Message has "sending"
+| project Message = encryptedMessage, Key = strcat_array(Token, '')
+| invoke Dekrypt()
+
+| where Result != "Failure: wrong key"
+// At the time of each token, find all valid session IDs
+
+| join KuandaLogs() on  operationId// EXTRACT ALL OPERATION IDS FROM VALID TARGETS
+
+KuandaLogs
+| where Message !has "User session reset: all user encryption tokens are disposed."
+| where Message !has "User entered the system, start collecting user encryption tokens."
+| distinct *
+| parse-where Message with "Operation id="operationId" "*
+// At the time of each token, find all valid session IDs
+
+| partition hint.strategy=native by operationId(
+  order by Timestamp asc 
+  | scan with_match_id=stepCount declare(StartTime:datetime, EndTime:datetime) with(
+    step start output=all: Message has 'started'; // => StartTime = Timestamp;
+    //step hit output=all: Message has " ";//Captured user encryption";
+    step finish output=none: Message has "completed";
+  )
+)
+| summarize count() by operationId
+
+| partition hint.strategy=native by DetectiveId
+(
+    order by Timestamp asc 
+     | scan with_match_id=id  declare(StartTime:datetime, EndTime:datetime) with (
+        step start output=none: 
+			Message has 'User entered the system, start collecting user encryption tokens.' => StartTime = Timestamp;
+        //step hit output=all:
+        //    Message has 'started (\'CaseAssigned\'). Captured user encryption token:';
+        step noStop output=none:
+            Message !has 'User session reset: all user encryption tokens are disposed.';
+        step completed output=all:
+			Message has "completed: user encryption token for this operation is disposed.";
+    )
+    | parse-where Message with "Operation id="operationId" completed: user encryption token for this operation is disposed."
+    | project DetectiveId, operationId
+)
+| join (KuandaLogs | parse-where Message with "Operation id="operationId" started ('"status"'). Captured user encryption token: '"captured"'.") on operationId
+//| order by operationId
+
+| order by Timestamp
+| project-away DetectiveId1, Timestamp, Message, operationId1
+| distinct *
+| summarize make_list(captured) by operationId, DetectiveId
+| summarize make_list(list_captured) by DetectiveId
+| extend joined = strcat_array(list_list_captured, "")
+| join (KuandaLogs | parse-where Message with "Sending an encrypted message, will use Dekrypt(@'"encryptedMessage"', strcat_array(<active-user-encryption-tokens>, \'\')) for decoding." | project encryptedMessage, DetectiveId ) on DetectiveId
+| project Message = encryptedMessage, Key = joined
+| invoke Dekrypt()
+
+| extend cleanmessage = Dekrypt(, joined, '')
+
+Dekrypt(@'tBhku8uLuQULuDTou8udZDuduBiluQikuQiku4ERh4vV5\LEmeI9RGZYIXiCr[08ZBh[5e0e0DU6u848ZQ575DoyuXI95tyBR\16I6ijhO48ROY\0nv7I\16hO1l5[TyIP2Em\S9ROWj0tyBhO4l0KvB0tyUrtyChP2g0tA9ROJ9n[1Vme2VFXvh5GvkcnverGZgrtyChp==', 'xcsinhrcynvrnfoqoqxejfakodbwqemypasn', '')
+
+KuandaLogs
+| where Message !has "started ('CaseAssigned'). Captured user"
+| where Message !has "started ('CaseSolved'). Captured user"
+| where Message !has "started ('CaseUnsolved'). Captured user"
+| where Message !has " completed: user encryption token for this"
+| where Message !has "User session reset: all user encryption tokens are disposed."
+| where Message !has "User entered the system, start collecting user encryption tokens."
+
+
+
+// Sending an encrypted message, will use Dekrypt(@'tBhku8uLuQULuDTou8udZDuduBiluQikuQiku4ERh4vV5\LEmeI9RGZYIXiCr[08ZBh[5e0e0DU6u848ZQ575DoyuXI95tyBR\16I6ijhO48ROY\0nv7I\16hO1l5[TyIP2Em\S9ROWj0tyBhO4l0KvB0tyUrtyChP2g0tA9ROJ9n[1Vme2VFXvh5GvkcnverGZgrtyChp==', strcat_array(<active-user-encryption-tokens>, '')) for decoding.
+
+.create-or-alter function with (skipvalidation = "true") Dekrypt(T:(Message:string,Key:string)) { 
+    let lx=array_concat(range(48, 57, 1), range(65, 92, 1), range(97, 122, 1));
+    let uc = (_s:string) { unicode_codepoints_from_string(hash_sha256(_s))};
+    T 
+    | extend c1 = uc(tolower(Key)), c2 = uc(toupper(Key))
+    | mv-apply with_itemindex=i l=lx to typeof(int), c=c1 to typeof(int) on (order by c asc, i asc | summarize c1=unicode_codepoints_to_string(make_list(l)))
+    | mv-apply with_itemindex=i l=lx to typeof(int), c=c2 to typeof(int) on (order by c asc, i asc | summarize c2=unicode_codepoints_to_string(make_list(l)))
+    | extend Result = coalesce(base64_decode_tostring(translate(c1, c2, Message)), "Failure: wrong key")
+    | project-away c1, c2
+}
+
+
+KuandaLogs
+| where DetectiveId == "kvc134a34251e76943710a"
+| order by Timestamp
+| distinct *
+
+KuandaLogs
+| search "3f3352e693b854d7"
+
+
+
+KuandaLogs
+//| where DetectiveId == "kvc470de475c64ad8907b1"
+//| parse-where Message with "Sending an encrypted message, will use Dekrypt(@'"encryptedMessage"', strcat_array(<active-user-encryption-tokens>, \'\')) for decoding." 
+//| distinct Timestamp, DetectiveId, encryptedMessage
+//| join KuandaLogs on DetectiveId
+| where Message has "sending"
+| distinct  DetectiveId
+| join KuandaLogs on DetectiveId
+| project-away DetectiveId1
+| distinct *
+| partition hint.strategy=native by DetectiveId(
+  order by Timestamp asc
+  | scan with_match_id=stepCount declare(Token:dynamic, Output:dynamic ) with(
+    step start output=all: Message has "User entered the system" or Message has "User session reset"  => Token = dynamic([]);
+    step token output=all: Message has "Captured user" or Message has "completed: user" => Token = iff(Message has "Captured user",
+     //bag_merge(   token.Token,  bag_pack(tostring(split(Message, " ", 1)), tostring(split(Message, " ", 8)))   ),
+     bag_merge(   token.Token,  bag_pack(tostring(split(Message, " ", 1)[0]), tostring(split(Message, " ", 8)[0]))   ),
+     bag_remove_keys(token.Token, split(Message, " ", 1) ) 
+     );
+    step HIT output=all: Message has "Sending an encrypted" => Output = token.Token, Token = dynamic([]);
+   )
+)
+| order by Timestamp
+| where Message has "Sending"
+| mv-expand bagexpansion=array pair = Output
+| extend value = tostring(pair[1])
+| summarize Values = tostring(make_list(value)) by Message
+//| summarize Values = tostring(array_reverse(make_list(value))) by Message // array_reverse(), is this needed?
+| extend Key = replace_regex(Values, @'[^a-zA-Z]', '') 
+| parse-where Message with "Sending an encrypted message, will use Dekrypt(@'"encryptedMessage"', strcat_array(<active-user-encryption-tokens>, \'\')) for decoding." 
+| project Message = encryptedMessage,  Key = Key
+| invoke Dekrypt()
+| join (KuandaLogs | parse-where Message with "Sending an encrypted message, will use Dekrypt(@'"encryptedMessage"', strcat_array(<active-user-encryption-tokens>, \'\')) for decoding." | project Message = encryptedMessage, DetectiveId ) on Message
+| project-away Message1
+| distinct  *
+//| where Result !has "endpoint is not reachable"
+//| where Result !has "sending them to Kuanda"
+//| where Result !has "returned an error"
+| extend crash = bitset_count_ones(hash_many(tostring(DetectiveId), tostring(Key)))
+| order by crash
+| extend bitset_count_ones(hash_xxhash64(DetectiveId))
+
+//xxHash64
+range i from 0 to 2147483647 step 1
+| where ones = bitset_count_ones(hash_many('kvc-rusq7k0qp2g2dwpm6q', tostring(i))) > 54
+| project i
+
+//1,337,453,948
